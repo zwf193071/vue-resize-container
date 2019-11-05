@@ -1,9 +1,11 @@
 <template>
-    <div class="wrap">
+    <div class="wrap" :style="style">
         <span class="resize-panel-handle icon-gf icon-gf-grabber"
+            @mousedown.stop.prevent="stickDown($event)"
             @touchstart.stop.prevent="stickDown($event)"
         >
         </span>
+        <slot></slot>
     </div>
 </template>
 <script>
@@ -24,6 +26,20 @@ export default {
                 return val > 0
             }
         },
+        x: {
+            type: Number,
+            default: 0,
+            validator: function (val) {
+                return typeof val === 'number'
+            }
+        },
+        y: {
+            type: Number,
+            default: 0,
+            validator: function (val) {
+                return typeof val === 'number'
+            }
+        },
         parentW: {
             type: Number,
             default: 0,
@@ -41,6 +57,12 @@ export default {
     },
     data () {
         return {
+            rawWidth: this.w,
+            rawHeight: this.h,
+            rawLeft: this.x,
+            rawTop: this.y,
+            rawRight: null,
+            rawBottom: null,
             parentWidth: null,
             parentHeight: null,
             left: this.x,
@@ -50,9 +72,17 @@ export default {
         }
     },
     created() {
+        this.stickDrag = false;
         this.stickStartPos = {mouseX: 0, mouseY: 0, x: 0, y: 0, w: 0, h: 0};
     },
     mounted() {
+        this.parentElement = this.$el.parentNode;
+        this.parentWidth = this.parentW ? this.parentW : this.parentElement.clientWidth;
+        this.parentHeight = this.parentH ? this.parentH : this.parentElement.clientHeight;
+
+        this.rawRight = this.parentWidth - this.rawWidth - this.rawLeft;
+        this.rawBottom = this.parentHeight - this.rawHeight - this.rawTop;
+
         document.documentElement.addEventListener('mousemove', this.move);
         document.documentElement.addEventListener('mouseup', this.up);
         document.documentElement.addEventListener('mouseleave', this.up);
@@ -63,6 +93,18 @@ export default {
         document.documentElement.removeEventListener('mouseleave', this.up);
     },
     computed: {
+        style() {
+            return {
+                width: this.width + 'px',
+                height: this.height + 'px'
+            }
+        },
+        width() {
+            return this.parentWidth - this.left - this.right;
+        },
+        height() {
+            return this.parentHeight - this.top - this.bottom;
+        },
         rect() {
             return {
                 width: Math.round(this.width),
@@ -72,7 +114,18 @@ export default {
     },
     methods: {
         move(ev) {
+            if (!this.stickDrag) {
+                return
+            }
             ev.stopPropagation();
+            this.stickMove(ev);
+        },
+        up(ev) {
+            if (this.stickDrag) {
+                this.stickUp(ev);
+            }
+        },
+        stickMove(ev) {
             const stickStartPos = this.stickStartPos;
             const pageX = typeof ev.pageX !== 'undefined' ? ev.pageX : ev.touches[0].pageX;
             const pageY = typeof ev.pageY !== 'undefined' ? ev.pageY : ev.touches[0].pageY;
@@ -86,11 +139,65 @@ export default {
             this.rawRight = newRight;
             this.$emit('resizing', this.rect);
         },
-        stickDown() {
+        stickUp() {
+            this.stickDrag = false;
+            this.stickStartPos = {
+                mouseX: 0,
+                mouseY: 0,
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0
+            };
+            this.rawTop = this.top;
+            this.rawBottom = this.bottom;
+            this.rawLeft = this.left;
+            this.rawRight = this.right;
+
+            this.$emit('resizing', this.rect);
+        },
+        stickDown(ev) {
+            this.stickDrag = true;
             this.stickStartPos.mouseX = typeof ev.pageX !== 'undefined' ? ev.pageX : ev.touches[0].pageX;
             this.stickStartPos.mouseY = typeof ev.pageY !== 'undefined' ? ev.pageY : ev.touches[0].pageY;
             this.stickStartPos.right = this.right;
             this.stickStartPos.bottom = this.bottom;
+        }
+    },
+    watch: {
+        rawLeft(newLeft) {
+            this.left = newLeft;
+        },
+        rawRight(newRight) {
+            this.right = newRight;
+        },
+        rawTop(newTop) {
+            this.top = newTop;
+        },
+        rawBottom(newBottom) {
+            this.bottom = newBottom;
+        },
+        w() {
+            if (this.stickDrag) {
+                return
+            }
+            let delta = this.width - this.w;
+            this.rawRight = this.right + delta;
+        },
+        h() {
+            if (this.stickDrag) {
+                return
+            }
+            let delta = this.height - this.h;
+            this.rawBottom = this.bottom + delta;
+        },
+        parentW(val) {
+            this.right = val - this.width - this.left;
+            this.parentWidth = val;
+        },
+        parentH(val) {
+            this.bottom = val - this.height - this.top;
+            this.parentHeight = val;
         }
     },
 }
