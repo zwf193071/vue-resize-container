@@ -73,6 +73,15 @@ export default {
             validator: function (val) {
                 return val > 0
             }
+        },
+        // 当前索引
+        currentIndex: {
+            type: Number,
+            default: 0
+        },
+        lastIndex: {
+            type: Number,
+            default: 0
         }
     },
     data () {
@@ -138,6 +147,14 @@ export default {
         },
         height() {
             return this.parentHeight - this.top - this.bottom;
+        },
+        rect() {
+            return {
+                left: Math.round(this.left),
+                top: Math.round(this.top),
+                width: Math.round(this.width),
+                height: Math.round(this.height)
+            }
         }
     },
     methods: {
@@ -165,6 +182,8 @@ export default {
             let newRight = stickStartPos.right + delta.x;
             this.rawBottom = newBottom;
             this.rawRight = newRight;
+
+            this.$emit('resizing', this.rect);
         },
         stickUp() {
             this.stickDrag = false;
@@ -214,9 +233,15 @@ export default {
                 maxBottom: bottom + (height - minh)
             };
             return limits;
+        },
+        changeRightPos(rect) {
+            this.left = rect.left + rect.width
         }
     },
     watch: {
+        x(val) {
+            this.left = val
+        },
         rawLeft(newLeft) {
             this.left = newLeft;
         },
@@ -285,7 +310,7 @@ export default {
 <style scoped>
 .resize-wrap{
     background-color: #fbfbfb;
-    position: relative;
+    position: absolute;
     border: 1px solid #f4f5f8;
 }
 .resize-panel-handle {

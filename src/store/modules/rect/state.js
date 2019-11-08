@@ -1,10 +1,13 @@
 export default {
     'rects': [
         {
-            'width': 200,
             'height': 150,
-            'top': 10,
-            'left': 10,
+            'top': 0,
+            'color': '#EF9A9A'
+        },
+        {
+            'height': 150,
+            'top': 0,
             'color': '#EF9A9A'
         }
     ]
