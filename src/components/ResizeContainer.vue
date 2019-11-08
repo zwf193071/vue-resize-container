@@ -1,5 +1,8 @@
 <template>
-    <div class="wrap" :style="style">
+    <div
+        class="resize-wrap"
+        :style="style"
+    >
         <span class="resize-panel-handle icon-gf icon-gf-grabber"
             @mousedown.stop.prevent="stickDown($event)"
             @touchstart.stop.prevent="stickDown($event)"
@@ -40,6 +43,9 @@ export default {
                 return typeof val === 'number'
             }
         },
+        parentLimitation: {
+            type: Boolean, default: true
+        },
         parentW: {
             type: Number,
             default: 0,
@@ -52,6 +58,20 @@ export default {
             default: 0,
             validator: function (val) {
                 return val >= 0
+            }
+        },
+        minw: {
+            type: Number,
+            default: 50,
+            validator: function (val) {
+                return val > 0
+            }
+        },
+        minh: {
+            type: Number,
+            default: 50,
+            validator: function (val) {
+                return val > 0
             }
         }
     },
@@ -68,12 +88,24 @@ export default {
             left: this.x,
             top: this.y,
             right: null,
-            bottom: null
+            bottom: null,
+            minWidth: this.minw,
+            minHeight: this.minh
         }
     },
     created() {
         this.stickDrag = false;
         this.stickStartPos = {mouseX: 0, mouseY: 0, x: 0, y: 0, w: 0, h: 0};
+        this.limits = {
+            minLeft: null,
+            maxLeft: null,
+            minRight: null,
+            maxRight: null,
+            minTop: null,
+            maxTop: null,
+            minBottom: null,
+            maxBottom: null
+        };
     },
     mounted() {
         this.parentElement = this.$el.parentNode;
@@ -95,6 +127,8 @@ export default {
     computed: {
         style() {
             return {
+                top: this.top + 'px',
+                left: this.left + 'px',
                 width: this.width + 'px',
                 height: this.height + 'px'
             }
@@ -104,12 +138,6 @@ export default {
         },
         height() {
             return this.parentHeight - this.top - this.bottom;
-        },
-        rect() {
-            return {
-                width: Math.round(this.width),
-                height: Math.round(this.height)
-            }
         }
     },
     methods: {
@@ -137,7 +165,6 @@ export default {
             let newRight = stickStartPos.right + delta.x;
             this.rawBottom = newBottom;
             this.rawRight = newRight;
-            this.$emit('resizing', this.rect);
         },
         stickUp() {
             this.stickDrag = false;
@@ -153,8 +180,6 @@ export default {
             this.rawBottom = this.bottom;
             this.rawLeft = this.left;
             this.rawRight = this.right;
-
-            this.$emit('resizing', this.rect);
         },
         stickDown(ev) {
             this.stickDrag = true;
@@ -162,6 +187,33 @@ export default {
             this.stickStartPos.mouseY = typeof ev.pageY !== 'undefined' ? ev.pageY : ev.touches[0].pageY;
             this.stickStartPos.right = this.right;
             this.stickStartPos.bottom = this.bottom;
+
+            this.limits = this.calcResizeLimitation();
+        },
+        calcResizeLimitation() {
+            let minw = this.minWidth;
+            let minh = this.minHeight;
+            const width = this.width;
+            const height = this.height;
+            const bottom = this.bottom;
+            const top = this.top;
+            const left = this.left;
+            const right = this.right;
+
+            const parentLim = this.parentLimitation ? 0 : null;
+            
+
+            let limits = {
+                minLeft: parentLim,
+                maxLeft: left + (width - minw),
+                minRight: parentLim,
+                maxRight: right + (width - minw),
+                minTop: parentLim,
+                maxTop: top + (height - minh),
+                minBottom: parentLim,
+                maxBottom: bottom + (height - minh)
+            };
+            return limits;
         }
     },
     watch: {
@@ -169,17 +221,32 @@ export default {
             this.left = newLeft;
         },
         rawRight(newRight) {
+            const limits = this.limits;
+            if (limits.minRight !== null && newRight < limits.minRight) {
+                newRight = limits.minRight;
+            } else if (limits.maxRight !== null && limits.maxRight < newRight) {
+                newRight = limits.maxRight;
+            }
             this.right = newRight;
         },
         rawTop(newTop) {
             this.top = newTop;
         },
         rawBottom(newBottom) {
+            const limits = this.limits;
+            if (limits.minBottom !== null && newBottom < limits.minBottom) {
+                newBottom = limits.minBottom;
+            } else if (limits.maxBottom !== null && limits.maxBottom < newBottom) {
+                newBottom = limits.maxBottom;
+            }
             this.bottom = newBottom;
         },
         w() {
             if (this.stickDrag) {
                 return
+            }
+            if (this.parentLimitation) {
+                this.limits = this.calcResizeLimitation();
             }
             let delta = this.width - this.w;
             this.rawRight = this.right + delta;
@@ -187,6 +254,9 @@ export default {
         h() {
             if (this.stickDrag) {
                 return
+            }
+            if (this.parentLimitation) {
+                this.limits = this.calcResizeLimitation();
             }
             let delta = this.height - this.h;
             this.rawBottom = this.bottom + delta;
@@ -198,14 +268,22 @@ export default {
         parentH(val) {
             this.bottom = val - this.height - this.top;
             this.parentHeight = val;
+        },
+        minw(val) {
+            if (val > 0 && val <= this.width) {
+                this.minWidth = val
+            }
+        },
+        minh(val) {
+            if (val > 0 && val <= this.height) {
+                this.minHeight = val
+            }
         }
     },
 }
 </script>
 <style scoped>
-.wrap{
-    width: 200px;
-    height: 200px;
+.resize-wrap{
     background-color: #fbfbfb;
     position: relative;
     border: 1px solid #f4f5f8;
@@ -219,7 +297,7 @@ export default {
     width: 15px;
     height: 15px;
     display: block;
-    color: #D8D9DA
+    color: #D8D9DA;
 }
 @font-face {
     font-family: grafana-icons;

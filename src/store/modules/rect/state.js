@@ -4,7 +4,7 @@ export default {
             'width': 200,
             'height': 150,
             'top': 10,
-            'left': 220,
+            'left': 10,
             'color': '#EF9A9A'
         }
     ]

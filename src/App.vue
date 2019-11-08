@@ -70,7 +70,7 @@ export default {
   top: 30px;
   bottom: 30px;
   left: 30px;
-  right: 300px;
+  right: 800px;
   box-shadow: 0 0 2px #AAA;
   background-color: white;
 }
